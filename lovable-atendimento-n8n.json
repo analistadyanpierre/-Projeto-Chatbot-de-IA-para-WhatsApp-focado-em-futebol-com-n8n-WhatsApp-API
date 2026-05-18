@@ -1,0 +1,180 @@
+{
+  "name": "Lovable - Atendimento via Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lovable/atendimento",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "0a7b9504-3c11-4f9e-9813-bd50b3d422a4",
+      "name": "Webhook Lovable",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        260,
+        300
+      ],
+      "webhookId": "lovable-atendimento"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\n\nconst name = String(body.name ?? body.nome ?? '').trim();\nconst email = String(body.email ?? '').trim().toLowerCase();\nconst message = String(body.message ?? body.mensagem ?? '').trim();\nconst source = String(body.source ?? body.origem ?? 'lovable').trim();\n\nconst errors = [];\nif (!name) errors.push('Informe o nome.');\nif (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) errors.push('Informe um e-mail valido.');\nif (!message || message.length < 10) errors.push('Informe uma mensagem com pelo menos 10 caracteres.');\n\nreturn [{\n  json: {\n    valid: errors.length === 0,\n    errors,\n    lead: {\n      name,\n      email,\n      message,\n      source,\n      receivedAt: new Date().toISOString()\n    }\n  }\n}];"
+      },
+      "id": "4c0e16f6-79c5-469b-b338-16a61e7dbf55",
+      "name": "Validar dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "1a45d456-fc4f-4d7e-8f60-7acba8e79e90",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "61d7e9f1-963d-4906-9587-1371ae367ef4",
+      "name": "Dados validos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $json.lead;\nconst ticketId = `LV-${Date.now().toString(36).toUpperCase()}`;\n\nreturn [{\n  json: {\n    ok: true,\n    ticketId,\n    lead,\n    internalNote: `Novo contato de ${lead.name} <${lead.email}> recebido via ${lead.source}.`,\n    nextAction: 'Adicionar aqui envio de e-mail, CRM, planilha ou atendimento por IA.'\n  }\n}];"
+      },
+      "id": "bd3581da-7958-4175-9a8c-93d20f2f93ab",
+      "name": "Criar ticket",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1020,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, ticketId: $json.ticketId, message: 'Mensagem recebida com sucesso.' } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "96380ef1-331a-4ca4-8109-1451ec402767",
+      "name": "Responder sucesso",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1280,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: false, errors: $json.errors } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "ccdf29f9-14ea-4c1e-9a63-7675819f1ca3",
+      "name": "Responder erro",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1020,
+        420
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Lovable": {
+      "main": [
+        [
+          {
+            "node": "Validar dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar dados": {
+      "main": [
+        [
+          {
+            "node": "Dados validos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dados validos?": {
+      "main": [
+        [
+          {
+            "node": "Criar ticket",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Responder erro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar ticket": {
+      "main": [
+        [
+          {
+            "node": "Responder sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7f204e9b-3630-439e-9790-b10be31c1042",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "lovable-atendimento",
+  "tags": []
+}
