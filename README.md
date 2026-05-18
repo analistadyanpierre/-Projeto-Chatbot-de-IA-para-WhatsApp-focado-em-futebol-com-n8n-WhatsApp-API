@@ -1,0 +1,1 @@
+# -Projeto-Chatbot-de-IA-para-WhatsApp-focado-em-futebol-com-n8n-WhatsApp-API
